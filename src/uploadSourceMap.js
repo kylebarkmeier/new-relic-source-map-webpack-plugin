@@ -1,44 +1,37 @@
-"use strict";
-const findSourceMap = require('./findSourceMap');
-const {publishSourcemap} = require('@newrelic/publish-sourcemap');
+'use strict';
+const { publishSourcemap } = require('@newrelic/publish-sourcemap');
 
-module.exports = opts => item => {
+module.exports = opts => assets => {
     const {
-        assets,
         staticAssetUrlBuilder,
         publicPath,
+        outputPath,
         applicationId,
         nrAdminKey,
         url,
         releaseName,
         releaseId,
-        stats
     } = opts;
 
-    const fileObj = assets[item];
-    if (!fileObj.children) {
-        return Promise.resolve();
-    }
+    const javascriptUrl = staticAssetUrlBuilder(url, publicPath, assets.js);
+    const sourcemapPath = outputPath + '/' + assets.map;
 
-    const mapFile = assets[findSourceMap(fileObj.children)];
-    if (mapFile === undefined || !mapFile.emitted) {
-        return Promise.resolve();
-    }
-
-    const javascriptUrl = staticAssetUrlBuilder(url, publicPath, item, stats);
     return new Promise((resolve, reject) => {
-        publishSourcemap({
-            sourcemapPath: mapFile.existsAt,
-            javascriptUrl,
-            applicationId,
-            nrAdminKey,
-            releaseName,
-            releaseId
-        }, (err) => {
-            if (err) {
-                reject(err);
+        publishSourcemap(
+            {
+                sourcemapPath,
+                javascriptUrl,
+                applicationId,
+                nrAdminKey,
+                releaseName,
+                releaseId,
+            },
+            err => {
+                if (err) {
+                    reject(err);
+                }
+                resolve(javascriptUrl);
             }
-            resolve(javascriptUrl);
-        });
+        );
     });
 };

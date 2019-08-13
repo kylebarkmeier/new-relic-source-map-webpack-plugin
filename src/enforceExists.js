@@ -1,4 +1,4 @@
-"use strict";
+'use strict';
 module.exports = (opts, name) => {
     if (opts[name] === undefined) {
         throw new Error(`${name} is required`);

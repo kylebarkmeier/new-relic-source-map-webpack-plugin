@@ -1,302 +1,325 @@
-jest.mock('../src/uploadSourceMap', () => jest.fn());
-const NewRelicPlugin = require('../index.js');
-const uploadSourceMap = require('../src/uploadSourceMap');
-const compiler = {
-    plugin: jest.fn()
-};
+const { publishSourcemap } = require('@newrelic/publish-sourcemap');
+const NewRelicSourceMapPlugin = require('../index.js');
+const path = require('path');
+const webpack = require('webpack');
+
+const spyConsoleWarn = jest.spyOn(global.console, 'warn');
+jest.mock('@newrelic/publish-sourcemap');
+jest.setTimeout(10000);
+
+function getConfig(config = {}) {
+    const defaultConfigs = {
+        context: path.resolve(__dirname),
+        entry: './__fixtures__/test.js',
+        mode: 'production',
+        devtool: 'source-map',
+        output: {
+            path: path.resolve(__dirname, '__output__'),
+            publicPath: '/test/publicPath',
+        },
+        plugins: [
+            new NewRelicSourceMapPlugin({
+                applicationId: 'id',
+                nrAdminKey: 'key',
+                staticAssetUrl: 'http://examplecdn.com',
+            }),
+        ],
+    };
+    return Object.assign({}, defaultConfigs, config);
+}
+
 beforeEach(() => {
     jest.clearAllMocks();
+    publishSourcemap.mockImplementation((options, cb) => {
+        cb();
+    });
 });
 
-test('it throw an error if there is no application id', () => {
+it('throw an error if there is no application id', () => {
     const testFn = () => {
-        new NewRelicPlugin({
+        new NewRelicSourceMapPlugin({
             nrAdminKey: 'key',
-            staticAssetUrl: 'url'
+            staticAssetUrl: 'http://examplecdn.com',
         });
     };
-    expect(testFn).toThrowError("applicationId is required");
+    expect(testFn).toThrowError('applicationId is required');
 });
 
-test('it doesnt throw an error if there is no application id if noop is true', () => {
+it('doesnt throw an error if there is no application id if noop is true', () => {
     const testFn = () => {
-        new NewRelicPlugin({
+        new NewRelicSourceMapPlugin({
             noop: true,
             nrAdminKey: 'key',
-            staticAssetUrl: 'url'
+            staticAssetUrl: 'http://examplecdn.com',
         });
     };
-    expect(testFn).not.toThrowError("applicationId is required");
+    expect(testFn).not.toThrowError('applicationId is required');
 });
 
-test('it throw an error if there is no staticAssetUrl', () => {
+it('throw an error if there is no staticAssetUrl', () => {
     const testFn = () => {
-        new NewRelicPlugin({
+        new NewRelicSourceMapPlugin({
             nrAdminKey: 'key',
-            applicationId: 'id'
+            applicationId: 'id',
         });
     };
-    expect(testFn).toThrowError("staticAssetUrl is required");
+    expect(testFn).toThrowError('staticAssetUrl is required');
 });
 
-test('it throw an error if there is no nrAdminKey', () => {
+it('throw an error if there is no nrAdminKey', () => {
     const testFn = () => {
-        new NewRelicPlugin({
+        new NewRelicSourceMapPlugin({
             applicationId: 'key',
-            staticAssetUrl: 'url'
+            staticAssetUrl: 'http://examplecdn.com',
         });
     };
-    expect(testFn).toThrowError("nrAdminKey is required");
+    expect(testFn).toThrowError('nrAdminKey is required');
 });
 
-test('it accepts a user defined staticAssetUrlBuilder', () => {
-    const staticAssetUrlBuilder = () => {};
-    const nr = new NewRelicPlugin({
-        applicationId: 'id',
-        nrAdminKey: 'key',
-        staticAssetUrl: 'url',
-        staticAssetUrlBuilder
+it('accepts a user defined staticAssetUrlBuilder', done => {
+    const staticAssetUrlBuilder = () => 'customStaticAssertUrlBuilder.js';
+    const config = getConfig({
+        plugins: [
+            new NewRelicSourceMapPlugin({
+                applicationId: 'id',
+                nrAdminKey: 'key',
+                staticAssetUrl: 'http://examplecdn.com',
+                staticAssetUrlBuilder,
+            }),
+        ],
     });
-    expect(nr.staticAssetUrlBuilder).toBe(staticAssetUrlBuilder);
+
+    webpack(config, (err, stats) => {
+        expect(publishSourcemap).toHaveBeenCalledWith(
+            expect.objectContaining({
+                javascriptUrl: 'customStaticAssertUrlBuilder.js',
+            }),
+            expect.any(Function)
+        );
+        done();
+    });
 });
 
-test('it defaults the staticAssetUrlBuilder to the module', () => {
-    const nr = new NewRelicPlugin({
-        applicationId: 'id',
-        nrAdminKey: 'key',
-        staticAssetUrl: 'url'
+it('accepts a user defined extensionRegex', done => {
+    const extensionRegex = /\.css/;
+    const config = getConfig({
+        plugins: [
+            new NewRelicSourceMapPlugin({
+                applicationId: 'id',
+                nrAdminKey: 'key',
+                staticAssetUrl: 'http://examplecdn.com',
+                extensionRegex,
+            }),
+        ],
     });
-    expect(nr.staticAssetUrlBuilder).toBe(require('../src/staticAssetUrlBuilder'));
+
+    webpack(config, (err, stats) => {
+        expect(publishSourcemap).not.toBeCalled();
+        done();
+    });
 });
 
-test('it accepts a user defined extensionRegex', () => {
-    const extensionRegex = /test/
-    const nr = new NewRelicPlugin({
-        applicationId: 'id',
-        nrAdminKey: 'key',
-        staticAssetUrl: 'url',
-        extensionRegex
+it('accepts a user defined errorCallback', done => {
+    let consoleOutput = [];
+    const errorCallback = err => consoleOutput.push(err);
+    const config = getConfig({
+        plugins: [
+            new NewRelicSourceMapPlugin({
+                applicationId: 'id',
+                nrAdminKey: 'key',
+                staticAssetUrl: 'http://examplecdn.com',
+                errorCallback,
+            }),
+        ],
+        devtool: false,
     });
-    expect(nr.extensionRegex).toBe(extensionRegex);
+
+    webpack(config, (err, stats) => {
+        expect(consoleOutput.length !== 0).toBe(true);
+        done();
+    });
 });
 
-test('it defaults the extensionRegex to /.js$/', () => {
-    const nr = new NewRelicPlugin({
-        applicationId: 'id',
-        nrAdminKey: 'key',
-        staticAssetUrl: 'url',
+it('sets apply to a noop if noop is passed', done => {
+    const config = getConfig({
+        plugins: [
+            new NewRelicSourceMapPlugin({
+                applicationId: 'id',
+                nrAdminKey: 'key',
+                staticAssetUrl: 'http://examplecdn.com',
+                noop: true,
+            }),
+        ],
     });
-    expect(nr.extensionRegex).toEqual(/\.js$/);
+
+    webpack(config, (err, stats) => {
+        expect(publishSourcemap).not.toBeCalled();
+        done();
+    });
 });
 
-test('if noop is passed it sets apply to a noop', () => {
-    const nr = new NewRelicPlugin({
-        applicationId: 'id',
-        nrAdminKey: 'key',
-        staticAssetUrl: 'url',
-        noop: true
+it('passes right args to publishSourcemap', done => {
+    const config = getConfig({
+        plugins: [
+            new NewRelicSourceMapPlugin({
+                applicationId: 'id',
+                nrAdminKey: 'key',
+                staticAssetUrl: 'http://examplecdn.com',
+                releaseName: 'releaseName',
+                releaseId: '111',
+            }),
+        ],
     });
-    nr.apply();
-    expect(uploadSourceMap).not.toBeCalled();
-});
 
-test('if noop it returns an instance with an apply method', () => {
-    const nr = new NewRelicPlugin({
-        applicationId: 'id',
-        nrAdminKey: 'key',
-        staticAssetUrl: 'url',
-        noop: true
-    });
-    expect(nr.apply).toEqual(expect.any(Function));
-});
-
-test('apply adds a callback to the compiler done event', () => {
-    const nr = new NewRelicPlugin({
-        applicationId: 'id',
-        nrAdminKey: 'key',
-        staticAssetUrl: 'url',
-    });
-    nr.apply(compiler);
-    expect(compiler.plugin).toBeCalledWith('done', expect.any(Function));
-});
-
-test('it filters the assets using the extension regex', () => {
-    const nr = new NewRelicPlugin({
-        applicationId: 'id',
-        nrAdminKey: 'key',
-        staticAssetUrl: 'url',
-    });
-    const uploader = jest.fn();
-    const stats = {
-        compilation: {
-            assets: {
-                'something': {},
-                'somethingelse': {},
-                'something.js': {},
-                'somethingelse.js': {}
+    webpack(config, (err, stats) => {
+        expect(publishSourcemap).toHaveBeenCalledWith(
+            {
+                sourcemapPath: expect.any(String),
+                javascriptUrl: 'http://examplecdn.com/test/publicPath/main.js',
+                applicationId: 'id',
+                nrAdminKey: 'key',
+                releaseName: 'releaseName',
+                releaseId: '111',
             },
-            outputOptions: {
-                publicPath: 'path'
-            }
-        }
-    };
-    compiler.plugin.mockImplementation((name, cb) => {
-        cb(stats);
-    });
-    uploadSourceMap.mockImplementation(() => {
-        return uploader;
-    })
-    nr.apply(compiler);
-    expect(uploader.mock.calls.length).toEqual(2);
-});
-
-it('passes needed configs to uploadSourceMap', () => {
-    const nr = new NewRelicPlugin({
-        applicationId: 'id',
-        nrAdminKey: 'key',
-        staticAssetUrl: 'url',
-    });
-    const stats = {
-        compilation: {
-            assets: {},
-            outputOptions: {
-                publicPath: 'path'
-            }
-        }
-    };
-    compiler.plugin.mockImplementation((name, cb) => {
-        cb(stats);
-    });
-    nr.apply(compiler);
-    expect(uploadSourceMap).toBeCalledWith({
-        assets: stats.compilation.assets,
-        staticAssetUrlBuilder: nr.staticAssetUrlBuilder,
-        url: nr.staticAssetUrl,
-        publicPath: 'path',
-        releaseId: null,
-        releaseName: null,
-        nrAdminKey: nr.nrAdminKey,
-        applicationId: nr.applicationId,
-        stats
+            expect.any(Function)
+        );
+        done();
     });
 });
 
-test('it logs the upload message for every uploaded file', () => {
-    const nr = new NewRelicPlugin({
-        applicationId: 'id',
-        nrAdminKey: 'key',
-        staticAssetUrl: 'url',
+it('succeeds to upload when futureEmitAssets:false', done => {
+    const config = getConfig();
+
+    webpack(config, (err, stats) => {
+        expect(publishSourcemap).toBeCalled();
+        expect(spyConsoleWarn).not.toBeCalled();
+        done();
     });
-    const stats = {
-        compilation: {
-            assets: {
-                'something.js': {},
-                'somethingelse.js': {}
+});
+
+it('succeeds to upload when futureEmitAssets:true', done => {
+    const config = getConfig({
+        output: {
+            path: path.resolve(__dirname, '__output__'),
+            publicPath: '/test/publicPath/',
+            futureEmitAssets: true,
+        },
+    });
+
+    webpack(config, (err, stats) => {
+        expect(publishSourcemap).toBeCalled();
+        expect(spyConsoleWarn).not.toBeCalled();
+        done();
+    });
+});
+
+it('logs the error when source-map is disabled', done => {
+    const config = getConfig({
+        devtool: false,
+    });
+
+    webpack(config, (err, stats) => {
+        expect(
+            spyConsoleWarn.mock.calls.some(call =>
+                call.includes(
+                    'New Relic sourcemap upload error: No sourcemaps were found. Check if sourcemaps are enabled: https://webpack.js.org/configuration/devtool/'
+                )
+            )
+        ).toBe(true);
+        done();
+    });
+});
+
+it('prints a warning message if a sourcemap upload fails', done => {
+    const errorMessage = 'error';
+    const config = getConfig();
+    publishSourcemap.mockImplementation((obj, cb) => {
+        cb(errorMessage);
+    });
+
+    webpack(config, (err, stats) => {
+        expect(
+            spyConsoleWarn.mock.calls.some(call =>
+                call.includes(`New Relic sourcemap upload error: ${errorMessage}`)
+            )
+        ).toBe(true);
+        done();
+    });
+});
+
+it('succeeds to upload when filename has a question mark in it', done => {
+    const config = getConfig({
+        output: {
+            filename: '[name].js?v=1',
+            path: path.resolve(__dirname, '__output__'),
+        },
+    });
+
+    webpack(config, (err, stats) => {
+        expect(publishSourcemap).toBeCalled();
+        expect(spyConsoleWarn).not.toBeCalled();
+        done();
+    });
+});
+
+describe('javascriptUrl', () => {
+    it('combines the url, publicPath, and filename', done => {
+        const config = getConfig();
+
+        webpack(config, (err, stats) => {
+            expect(publishSourcemap).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    javascriptUrl: 'http://examplecdn.com/test/publicPath/main.js',
+                }),
+                expect.any(Function)
+            );
+            done();
+        });
+    });
+
+    it('removes trailing slashes from publicPath and url if present', done => {
+        const config = getConfig({
+            output: {
+                path: path.resolve(__dirname, '__output__'),
+                publicPath: '/test/publicPath/',
+                futureEmitAssets: true,
             },
-            outputOptions: {
-                publicPath: 'path'
-            }
-        }
-    };
-    compiler.plugin.mockImplementation((name, cb) => {
-        return cb(stats);
-    });
-    uploadSourceMap.mockImplementation(() => {
-        return () => {
-            return new Promise(res => {
-                res('url');
-            });
-        };
-    });
-    console.log = jest.fn();
-    const promise = nr.apply(compiler);
-    return promise.then(() => {
-        expect(console.log.mock.calls[0][0]).toMatch(/sourceMap for .* uploaded to newrelic/i);
-    });
-});
+            plugins: [
+                new NewRelicSourceMapPlugin({
+                    applicationId: 'id',
+                    nrAdminKey: 'key',
+                    staticAssetUrl: 'http://examplecdn.com/',
+                }),
+            ],
+        });
 
-test('it logs the error for an error is thrown', () => {
-    const nr = new NewRelicPlugin({
-        applicationId: 'id',
-        nrAdminKey: 'key',
-        staticAssetUrl: 'url',
+        webpack(config, (err, stats) => {
+            expect(publishSourcemap).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    javascriptUrl: 'http://examplecdn.com/test/publicPath/main.js',
+                }),
+                expect.any(Function)
+            );
+            done();
+        });
     });
-    const stats = {
-        compilation: {
-            assets: {
-                'something.js': {},
-                'somethingelse.js': {}
+
+    it('omits publicPath when its value is undefined', done => {
+        const config = getConfig({
+            output: {
+                path: path.resolve(__dirname, '__output__'),
+                futureEmitAssets: true,
             },
-            outputOptions: {
-                publicPath: 'path'
-            }
-        }
-    };
-    compiler.plugin.mockImplementation((name, cb) => {
-        return cb(stats);
-    });
-    uploadSourceMap.mockImplementation(() => {
-        return () => {
-            return new Promise((res, rej) => {
-                rej('error');
-            });
-        };
-    });
-    console.warn = jest.fn();
-    const promise = nr.apply(compiler);
+        });
 
-    expect.assertions(1);
-    return promise.then(() => {
-        expect(console.warn).toBeCalledWith('New Relic sourcemap upload error: error');
-    });
-});
-
-test('it accepts a user defined errorCallback', () => {
-    const errorCallback = () => {};
-    const nr = new NewRelicPlugin({
-        applicationId: 'id',
-        nrAdminKey: 'key',
-        staticAssetUrl: 'url',
-        errorCallback
-    });
-    expect(nr.errorCallback).toBe(errorCallback);
-});
-
-test('it handles the error with the custom callback', () => {
-    const nr = new NewRelicPlugin({
-        applicationId: 'id',
-        nrAdminKey: 'key',
-        staticAssetUrl: 'url',
-        errorCallback: (err) => {
-            console.log(`There is an error - ${err}`);
-        }
-    });
-    const stats = {
-        compilation: {
-            assets: {
-                'something.js': {},
-                'somethingelse.js': {}
-            },
-            outputOptions: {
-                publicPath: 'path'
-            }
-        }
-    };
-    compiler.plugin.mockImplementation((name, cb) => {
-        return cb(stats);
-    });
-    uploadSourceMap.mockImplementation(() => {
-        return () => {
-            return new Promise((res, rej) => {
-                rej('some error');
-            });
-        };
-    });
-    console.log = jest.fn();
-    const promise = nr.apply(compiler);
-
-    expect.assertions(1);
-    return promise.then(() => {
-        expect(console.log).toBeCalledWith('There is an error - some error');
+        webpack(config, (err, stats) => {
+            expect(publishSourcemap).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    javascriptUrl: 'http://examplecdn.com/main.js',
+                }),
+                expect.any(Function)
+            );
+            done();
+        });
     });
 });

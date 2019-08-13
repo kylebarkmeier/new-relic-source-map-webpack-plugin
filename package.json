@@ -1,43 +1,48 @@
 {
-  "name": "new-relic-source-map-webpack-plugin",
-  "version": "1.0.0",
-  "description": "Upload source maps to new relic as part of a webpack build.",
-  "main": "index.js",
-  "repository": "git@github.com:1stdibs/new-relic-source-map-webpack-plugin.git",
-  "author": "Walker Flynn <walker@1stdibs.com>",
-  "license": "MIT",
-  "keywords": [
-    "webpack",
-    "plugin",
-    "newrelic",
-    "new relic",
-    "sourcemap",
-    "source map",
-    "upload",
-    "uploader"
-  ],
-  "scripts": {
-    "test": "jest"
-  },
-  "jest": {
-    "verbose": true,
-    "collectCoverage": true,
-    "coverageDirectory": "<rootDir>/_coverage",
-    "collectCoverageFrom" : ["**/*.{js,jsx}", "!**/node_modules/**"],
-    "coverageReporters": ["text", "text-summary"],
-    "coverageThreshold": {
-      "global": {
-        "branches": 100,
-        "functions": 100,
-        "lines": 100,
-        "statements": 100
-      }
+    "name": "new-relic-source-map-webpack-plugin",
+    "version": "1.0.0",
+    "description": "Upload source maps to new relic as part of a webpack build.",
+    "main": "index.js",
+    "repository": "git@github.com:1stdibs/new-relic-source-map-webpack-plugin.git",
+    "author": "Walker Flynn <walker@1stdibs.com>",
+    "license": "MIT",
+    "keywords": [
+        "webpack",
+        "plugin",
+        "newrelic",
+        "new relic",
+        "sourcemap",
+        "source map",
+        "upload",
+        "uploader"
+    ],
+    "scripts": {
+        "test": "jest"
+    },
+    "jest": {
+        "browser": true,
+        "verbose": true,
+        "collectCoverage": true,
+        "coverageDirectory": "<rootDir>/_coverage",
+        "collectCoverageFrom": [
+            "**/*.{js, jsx}",
+            "!**/node_modules/**",
+            "!**/__tests__/**"
+        ],
+        "coverageReporters": [
+            "text",
+            "text-summary"
+        ],
+        "testPathIgnorePatterns": [
+            "<rootDir>/__tests__/__fixtures__",
+            "<rootDir>/__tests__/__output__"
+        ]
+    },
+    "devDependencies": {
+        "jest": "^24.8.0",
+        "webpack": "^4.39.1"
+    },
+    "dependencies": {
+        "@newrelic/publish-sourcemap": "^4.4.1"
     }
-  },
-  "devDependencies": {
-    "jest": "^19.0.2"
-  },
-  "dependencies": {
-    "@newrelic/publish-sourcemap": "^4.1.2"
-  }
 }
