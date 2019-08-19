@@ -13,8 +13,8 @@ module.exports = opts => assets => {
         releaseId,
     } = opts;
 
-    const javascriptUrl = staticAssetUrlBuilder(url, publicPath, assets.js);
-    const sourcemapPath = outputPath + '/' + assets.map;
+    const javascriptUrl = staticAssetUrlBuilder(url, publicPath, assets.fileName);
+    const sourcemapPath = outputPath + '/' + assets.mapName;
 
     return new Promise((resolve, reject) => {
         publishSourcemap(
