@@ -2,8 +2,6 @@
 const uploadSourceMap = require('./src/uploadSourceMap');
 const staticAssetUrlBuilder = require('./src/staticAssetUrlBuilder');
 const enforceExists = require('./src/enforceExists');
-const findSourceMap = require('./src/findSourceMap');
-const PLUGIN_NAME = 'new-relic-source-map-webpack-plugin';
 
 class NewRelicPlugin {
     constructor(options) {
@@ -21,19 +19,19 @@ class NewRelicPlugin {
         this.errorCallback = options.errorCallback || this._getDefaultErrorCallback();
     }
     apply(compiler) {
-        compiler.hooks.done.tapPromise(PLUGIN_NAME, stats => {
+        compiler.hooks.done.tapPromise('new-relic-source-map-webpack-plugin', stats => {
             const jsonStats = stats.toJson();
             let assets = [];
             
-            Object.values(jsonStats.assetsByChunkName).map(assets => {
-                //when devtools: false, it will return string instead of array
-                if (Array.isArray(assets)) {
+            Object.values(jsonStats.assetsByChunkName).map(assetsArr => {
+                if (Array.isArray(assetsArr)) {
                     const mapRegex = /\.map(\?|$)/;
-                    const fileName = assets.find(asset => this.extensionRegex.test(asset));
-                    const mapName = assets.find(
+                    const fileName = assetsArr.find(asset => this.extensionRegex.test(asset));
+                    const mapName = assetsArr.find(
                         asset =>
                             this.extensionRegex.test(asset.split('.map')[0]) && mapRegex.test(asset)
                     );
+
                     if (fileName && mapName) {
                         assets.push({ fileName, mapName });
                     }
@@ -45,28 +43,28 @@ class NewRelicPlugin {
                     'No sourcemaps were found. Check if sourcemaps are enabled: https://webpack.js.org/configuration/devtool/'
                 );
                 return Promise.resolve();
-            } else {
-                return Promise.all(
-                    assets.map(
-                        uploadSourceMap({
-                            staticAssetUrlBuilder: this.staticAssetUrlBuilder,
-                            url: this.staticAssetUrl,
-                            publicPath: stats.compilation.outputOptions.publicPath,
-                            outputPath: stats.compilation.outputOptions.path,
-                            nrAdminKey: this.nrAdminKey,
-                            applicationId: this.applicationId,
-                            releaseName: this.releaseName,
-                            releaseId: this.releaseId,
-                        })
-                    )
-                )
-                    .then(values => {
-                        values.forEach(v => console.log(`sourceMap for ${v} uploaded to newrelic`));
+            } 
+
+            return Promise.all(
+                assets.map(
+                    uploadSourceMap({
+                        staticAssetUrlBuilder: this.staticAssetUrlBuilder,
+                        url: this.staticAssetUrl,
+                        publicPath: stats.compilation.outputOptions.publicPath,
+                        outputPath: stats.compilation.outputOptions.path,
+                        nrAdminKey: this.nrAdminKey,
+                        applicationId: this.applicationId,
+                        releaseName: this.releaseName,
+                        releaseId: this.releaseId,
                     })
-                    .catch(err => {
-                        this.errorCallback(err);
-                    });
-            }
+                )
+            )
+                .then(values => {
+                    values.forEach(v => console.log(`sourceMap for ${v} uploaded to newrelic`));
+                })
+                .catch(err => {
+                    this.errorCallback(err);
+                });
         });
     }
     _getDefaultErrorCallback() {
