@@ -20,30 +20,30 @@ class NewRelicPlugin {
     }
     apply(compiler) {
         compiler.hooks.done.tapPromise('new-relic-source-map-webpack-plugin', stats => {
-            const jsonStats = stats.toJson();
-            let assets = [];
-            
-            Object.values(jsonStats.assetsByChunkName).map(assetsArr => {
-                if (Array.isArray(assetsArr)) {
+            const chunks = stats.compilation.chunks;
+            const assets = [];
+
+            chunks
+                .map(chunk => chunk.files)
+                .map(files => {
                     const mapRegex = /\.map(\?|$)/;
-                    const fileName = assetsArr.find(asset => this.extensionRegex.test(asset));
-                    const mapName = assetsArr.find(
-                        asset =>
-                            this.extensionRegex.test(asset.split('.map')[0]) && mapRegex.test(asset)
+                    const fileName = files.find(file => this.extensionRegex.test(file));
+                    const mapName = files.find(
+                        file =>
+                            this.extensionRegex.test(file.split('.map')[0]) && mapRegex.test(file)
                     );
 
                     if (fileName && mapName) {
                         assets.push({ fileName, mapName });
                     }
-                }
-            });
+                });
 
             if (assets.length === 0) {
                 this.errorCallback(
                     'No sourcemaps were found. Check if sourcemaps are enabled: https://webpack.js.org/configuration/devtool/'
                 );
                 return Promise.resolve();
-            } 
+            }
 
             return Promise.all(
                 assets.map(
