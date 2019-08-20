@@ -1,3 +1,4 @@
+'use strict';
 const { publishSourcemap } = require('@newrelic/publish-sourcemap');
 const NewRelicSourceMapPlugin = require('../index.js');
 const path = require('path');
@@ -89,7 +90,7 @@ it('accepts a user defined staticAssetUrlBuilder', done => {
         ],
     });
 
-    webpack(config, (err, stats) => {
+    webpack(config, () => {
         expect(publishSourcemap).toHaveBeenCalledWith(
             expect.objectContaining({
                 javascriptUrl: 'customStaticAssertUrlBuilder.js',
@@ -113,14 +114,14 @@ it('accepts a user defined extensionRegex', done => {
         ],
     });
 
-    webpack(config, (err, stats) => {
+    webpack(config, () => {
         expect(publishSourcemap).not.toBeCalled();
         done();
     });
 });
 
 it('accepts a user defined errorCallback', done => {
-    let consoleOutput = [];
+    const consoleOutput = [];
     const errorCallback = err => consoleOutput.push(err);
     const config = getConfig({
         plugins: [
@@ -134,7 +135,7 @@ it('accepts a user defined errorCallback', done => {
         devtool: false,
     });
 
-    webpack(config, (err, stats) => {
+    webpack(config, () => {
         expect(consoleOutput.length !== 0).toBe(true);
         done();
     });
@@ -152,7 +153,7 @@ it('sets apply to a noop if noop is passed', done => {
         ],
     });
 
-    webpack(config, (err, stats) => {
+    webpack(config, () => {
         expect(publishSourcemap).not.toBeCalled();
         done();
     });
@@ -171,7 +172,7 @@ it('passes right args to publishSourcemap', done => {
         ],
     });
 
-    webpack(config, (err, stats) => {
+    webpack(config, () => {
         expect(publishSourcemap).toHaveBeenCalledWith(
             {
                 sourcemapPath: expect.any(String),
@@ -190,7 +191,7 @@ it('passes right args to publishSourcemap', done => {
 it('succeeds to upload when futureEmitAssets:false', done => {
     const config = getConfig();
 
-    webpack(config, (err, stats) => {
+    webpack(config, () => {
         expect(publishSourcemap).toBeCalled();
         expect(spyConsoleWarn).not.toBeCalled();
         done();
@@ -206,7 +207,7 @@ it('succeeds to upload when futureEmitAssets:true', done => {
         },
     });
 
-    webpack(config, (err, stats) => {
+    webpack(config, () => {
         expect(publishSourcemap).toBeCalled();
         expect(spyConsoleWarn).not.toBeCalled();
         done();
@@ -218,7 +219,7 @@ it('logs the error when source-map is disabled', done => {
         devtool: false,
     });
 
-    webpack(config, (err, stats) => {
+    webpack(config, () => {
         expect(
             spyConsoleWarn.mock.calls.some(call =>
                 call.includes(
@@ -237,7 +238,7 @@ it('prints a warning message if a sourcemap upload fails', done => {
         cb(errorMessage);
     });
 
-    webpack(config, (err, stats) => {
+    webpack(config, () => {
         expect(
             spyConsoleWarn.mock.calls.some(call =>
                 call.includes(`New Relic sourcemap upload error: ${errorMessage}`)
@@ -255,7 +256,7 @@ it('succeeds to upload when filename has a question mark in it', done => {
         },
     });
 
-    webpack(config, (err, stats) => {
+    webpack(config, () => {
         expect(publishSourcemap).toBeCalled();
         expect(spyConsoleWarn).not.toBeCalled();
         done();
@@ -266,7 +267,7 @@ describe('javascriptUrl', () => {
     it('combines the url, publicPath, and filename', done => {
         const config = getConfig();
 
-        webpack(config, (err, stats) => {
+        webpack(config, () => {
             expect(publishSourcemap).toHaveBeenCalledWith(
                 expect.objectContaining({
                     javascriptUrl: 'http://examplecdn.com/test/publicPath/main.js',
@@ -293,7 +294,7 @@ describe('javascriptUrl', () => {
             ],
         });
 
-        webpack(config, (err, stats) => {
+        webpack(config, () => {
             expect(publishSourcemap).toHaveBeenCalledWith(
                 expect.objectContaining({
                     javascriptUrl: 'http://examplecdn.com/test/publicPath/main.js',
@@ -312,7 +313,7 @@ describe('javascriptUrl', () => {
             },
         });
 
-        webpack(config, (err, stats) => {
+        webpack(config, () => {
             expect(publishSourcemap).toHaveBeenCalledWith(
                 expect.objectContaining({
                     javascriptUrl: 'http://examplecdn.com/main.js',
