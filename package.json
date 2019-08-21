@@ -1,6 +1,6 @@
 {
     "name": "new-relic-source-map-webpack-plugin",
-    "version": "1.2.0-rc.0",
+    "version": "1.2.0-rc.2",
     "description": "Upload source maps to new relic as part of a webpack build.",
     "main": "index.js",
     "repository": "git@github.com:1stdibs/new-relic-source-map-webpack-plugin.git",
