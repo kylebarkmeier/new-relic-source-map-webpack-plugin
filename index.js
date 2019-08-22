@@ -2,8 +2,6 @@
 const uploadSourceMap = require('./src/uploadSourceMap');
 const staticAssetUrlBuilder = require('./src/staticAssetUrlBuilder');
 const enforceExists = require('./src/enforceExists');
-const findSourceMap = require('./src/findSourceMap');
-const PLUGIN_NAME = 'new-relic-source-map-webpack-plugin';
 
 class NewRelicPlugin {
     constructor(options) {
@@ -19,30 +17,36 @@ class NewRelicPlugin {
         this.releaseName = options.releaseName || null;
         this.releaseId = options.releaseId || null;
         this.errorCallback = options.errorCallback || this._getDefaultErrorCallback();
-        this.assets = [];
     }
     apply(compiler) {
-        compiler.hooks.emit.tap(PLUGIN_NAME, compilation => {
-            for (const [assetName, assetObj] of Object.entries(compilation.assets)) {
-                if (this.extensionRegex.test(assetName)) {
-                    const mapAssetName = findSourceMap(assetObj.children);
-                    const mapFile = compilation.assets[mapAssetName];
+        compiler.hooks.done.tapPromise('new-relic-source-map-webpack-plugin', stats => {
+            const chunks = stats.compilation.chunks;
+            const assets = [];
 
-                    if (mapFile) {
-                        this.assets.push({ js: assetName, map: mapAssetName });
+            chunks
+                .map(chunk => chunk.files)
+                .map(files => {
+                    const mapRegex = /\.map(\?|$)/;
+                    const fileName = files.find(file => this.extensionRegex.test(file));
+                    const mapName = files.find(
+                        file =>
+                            this.extensionRegex.test(file.split('.map')[0]) && mapRegex.test(file)
+                    );
+
+                    if (fileName && mapName) {
+                        assets.push({ fileName, mapName });
                     }
-                }
-            }
-            if (this.assets.length === 0) {
+                });
+
+            if (assets.length === 0) {
                 this.errorCallback(
                     'No sourcemaps were found. Check if sourcemaps are enabled: https://webpack.js.org/configuration/devtool/'
                 );
+                return Promise.resolve();
             }
-        });
 
-        compiler.hooks.done.tapPromise(PLUGIN_NAME, stats => {
             return Promise.all(
-                this.assets.map(
+                assets.map(
                     uploadSourceMap({
                         staticAssetUrlBuilder: this.staticAssetUrlBuilder,
                         url: this.staticAssetUrl,

@@ -257,7 +257,11 @@ it('succeeds to upload when filename has a question mark in it', done => {
     });
 
     webpack(config, () => {
-        expect(publishSourcemap).toBeCalled();
+        expect(
+            publishSourcemap.mock.calls.some(
+                call => call[0].javascriptUrl === 'http://examplecdn.com/main.js?v=1'
+            )
+        ).toBe(true);
         expect(spyConsoleWarn).not.toBeCalled();
         done();
     });
@@ -320,6 +324,24 @@ describe('javascriptUrl', () => {
                 }),
                 expect.any(Function)
             );
+            done();
+        });
+    });
+
+    it('uploads async chunks', done => {
+        const config = getConfig({
+            output: {
+                path: path.resolve(__dirname, '__output__'),
+                chunkFilename: '[name].chunk.js',
+            },
+        });
+
+        webpack(config, () => {
+            expect(
+                publishSourcemap.mock.calls.some(
+                    call => call[0].javascriptUrl === 'http://examplecdn.com/1.chunk.js'
+                )
+            ).toBe(true);
             done();
         });
     });

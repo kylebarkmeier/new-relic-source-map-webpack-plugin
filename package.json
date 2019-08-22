@@ -42,7 +42,8 @@
         "collectCoverageFrom": [
             "**/*.{js, jsx}",
             "!**/node_modules/**",
-            "!**/__tests__/**"
+            "!**/__tests__/**",
+            "!prettier.config.js"
         ],
         "coverageReporters": [
             "text",
