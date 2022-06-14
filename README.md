@@ -1,6 +1,4 @@
-# This package is no longer being maintained.
-
-## new-relic-source-map-webpack-plugin
+\## new-relic-source-map-webpack-plugin
 Upload source maps to new relic as part of a webpack build.
 
 

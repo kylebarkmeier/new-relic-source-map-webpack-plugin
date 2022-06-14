@@ -16,6 +16,8 @@ class NewRelicPlugin {
         this.extensionRegex = options.extensionRegex || /\.js(\?|$)/;
         this.releaseName = options.releaseName || null;
         this.releaseId = options.releaseId || null;
+        this.repoUrl = options.repoUrl || null;
+        this.buildCommit = options.buildCommit || null;
         this.errorCallback = options.errorCallback || this._getDefaultErrorCallback();
     }
     apply(compiler) {
@@ -56,6 +58,8 @@ class NewRelicPlugin {
                         applicationId: this.applicationId,
                         releaseName: this.releaseName,
                         releaseId: this.releaseId,
+                      repoUrl: this.repoUrl,
+                      buildCommit: this.buildCommit,
                     })
                 )
             )
