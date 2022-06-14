@@ -58,8 +58,8 @@ class NewRelicPlugin {
                         applicationId: this.applicationId,
                         releaseName: this.releaseName,
                         releaseId: this.releaseId,
-                      repoUrl: this.repoUrl,
-                      buildCommit: this.buildCommit,
+                        repoUrl: this.repoUrl,
+                        buildCommit: this.buildCommit,
                     })
                 )
             )
